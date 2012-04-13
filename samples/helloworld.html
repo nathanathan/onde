@@ -9,7 +9,7 @@
   <body>
 
 
-<form id="data-entry-form" method="post">
+<form id="data-entry-form">
   <!-- The element where the generated form goes to. -->
   <div class="onde-panel"></div>
   <!-- The submit button. -->
@@ -33,23 +33,32 @@ $(document).ready(function () {
       }
     };
     
-  // Instantiate Onde with our form above
-  var ondeSession = new onde.Onde($('#data-entry-form'));
-  // Render the form with the schema
-  ondeSession.render(sampleSchema, null, { collapsedCollapsibles: true });
-  
-  // Bind our form's submit event. We use this to get the data out from Onde
-  $('#data-entry-form').submit(function (evt) {
-    evt.preventDefault();
-    var outData = ondeSession.getData();
-    if (outData.errorCount) {
-      alert("Error");
-    } else {
-      console.log(JSON.stringify(outData.data, null, "  "));
-      alert("Output is in your browser's console");
-    }
-    return false;
-  });
+    $.getJSON('TemplateSchema.json', 
+		function(sampleSchema){
+          // Instantiate Onde with our form above
+          var ondeSession = new onde.Onde($('#data-entry-form'));
+          // Render the form with the schema
+          ondeSession.render(sampleSchema, {"name": "hi"}, { collapsedCollapsibles: true });
+          ondeSession.render(sampleSchema, {"name": "hi2"}, {});
+          
+          // Bind our form's submit event. We use this to get the data out from Onde
+          $('#data-entry-form').submit(function (evt) {
+            evt.preventDefault();
+            alert("asdf");
+            var outData = ondeSession.getData();
+            
+            if (outData.errorCount) {
+              alert("Error");
+            } else {
+              console.log(JSON.stringify(outData.data, null, "  "));
+              alert("Output is in your browser's console");
+            }
+            return false;
+          });
+	    });
+
+
+
 });
 </script>
 

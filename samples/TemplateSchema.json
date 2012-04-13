@@ -1,0 +1,115 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema",
+    "type": "object",
+    "properties": {
+        "fields": {
+            "type": "array",
+            "items": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                 "properties": {
+                                    "item_x": {
+                                        "required": true,
+                                        "type": "number"
+                                    },
+                                    "item_y": {
+                                        "required": true,
+                                        "type": "number"
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": ["string","number"]
+                                    }
+                                 }
+                            }
+                        },
+                        "classifier" : {
+                                "type": "object",
+                                "properties": {
+                                    "classifier_size": {
+                                        "required": true,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "training_data_uri": {
+                                        "required": true,
+                                        "default": "bubbles",
+                                        "type": "string"
+                                    },
+                                    "classification_map": {
+                                        "required": true,
+                                        "default": {
+                                            "empty":false
+                                        },
+                                        "type": "object"
+                                    },
+                                    "default_classification": 
+                                    {
+                                        "required": true,
+                                        "type": "any",
+                                        "default": false
+                                    }
+                                }
+                        },
+                        "label": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "required": true,
+                            "description": "A unique name used to identify this field. Must follow xml naming conventions.",
+                            "type": "string"
+                        },
+                        "type": {
+                            "default": "input",
+                            "required": true,
+                            "description": "Correponds with xform body element types.",
+                            "type": "string"
+                        },
+                        "segments": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "segment_height": {
+                                        "required": true,
+                                        "type": "number"
+                                    },
+                                    "segment_width": {
+                                        "required": true,
+                                        "type": "number"
+                                    },
+                                    "segment_x": {
+                                        "required": true,
+                                        "type": "number"
+                                    },
+                                    "segment_y": {
+                                        "required": true,
+                                        "type": "number"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "height": {
+            "type": "number"
+        },
+        "imageFilename": {
+            "type": "string"
+        },
+        "width": {
+            "type": "number"
+        }
+    }
+}
