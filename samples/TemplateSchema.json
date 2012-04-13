@@ -1,11 +1,13 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema",
+    "name":"Form template",
     "type": "object",
     "properties": {
         "fields": {
             "type": "array",
             "items": [
                 {
+                    "name":"Field",
                     "type": "object",
                     "properties": {
                         "items": {
@@ -32,13 +34,15 @@
                         },
                         "classifier" : {
                                 "type": "object",
+                                "required": false,
                                 "properties": {
-                                    "classifier_size": {
+                                    "classifier_height": {
                                         "required": true,
-                                        "type": "array",
-                                        "items": {
-                                            "type": "number"
-                                        }
+                                        "type": "integer"
+                                    },
+                                    "classifier_width": {
+                                        "required": true,
+                                        "type": "integer"
                                     },
                                     "training_data_uri": {
                                         "required": true,
@@ -46,17 +50,25 @@
                                         "type": "string"
                                     },
                                     "classification_map": {
+                                        "type": "object",
                                         "required": true,
+                                        "additionalProperties": true,
                                         "default": {
                                             "empty":false
-                                        },
-                                        "type": "object"
+                                        }
                                     },
                                     "default_classification": 
                                     {
                                         "required": true,
                                         "type": "any",
                                         "default": false
+                                    },
+                                    "alignment_radius": 
+                                    {
+                                        "description": "If specified a hill climbing search will be done to align the classified items.",
+                                        "default": 0,
+                                        "required": false,
+                                        "type": "number"
                                     }
                                 }
                         },
@@ -75,6 +87,8 @@
                             "type": "string"
                         },
                         "segments": {
+                            "name": "Segment",
+                            "description": "Segments are used to specify rectangualr areas of the form that a fields are bounded to.",
                             "type": "array",
                             "items": {
                                 "type": "object",
@@ -94,6 +108,13 @@
                                     "segment_y": {
                                         "required": true,
                                         "type": "number"
+                                    },
+                                    "align_segment": 
+                                    {
+                                        "description": "If this segment has a bounding rectagle it can be used for additional alignment if this is true. For flat images this isn't necessairy.",
+                                        "default": false,
+                                        "required": false,
+                                        "type": "boolean"
                                     }
                                 }
                             }
@@ -103,12 +124,15 @@
             ]
         },
         "height": {
+            "description": "The form's height in pixels.",
             "type": "number"
         },
         "imageFilename": {
+            "description": "The filename of the form image.",
             "type": "string"
         },
         "width": {
+            "description": "The form's width in pixels.",
             "type": "number"
         }
     }
