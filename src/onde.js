@@ -58,8 +58,8 @@ var onde = (function () {
     };
 })();
 
-//onde.PRIMITIVE_TYPES = ['string', 'number', 'integer', 'boolean', 'array', 'object'];
-onde.PRIMITIVE_TYPES = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null', 'any'];
+onde.PRIMITIVE_TYPES = ['string', 'number', 'integer', 'boolean', 'array', 'object', 'any'];
+//onde.simple_types = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null', 'any'];
 
 onde.Onde = function (formElement, schema, documentInst, opts) {
     var _inst = this;
@@ -349,8 +349,6 @@ onde.Onde.prototype.renderEnumField = function (fieldName, fieldInfo, valueData)
     return fieldValueNode;
 };
 onde.Onde.prototype.renderEditBarContent = function (typeList, fieldValueId, baseNode, controlNode) {
-    //TODO:Nathan: Remove this
-    console.error(baseNode);
     if (typeList.length == 1) {
         var optInfo = typeList[0];
         if (typeof optInfo == 'string') {
@@ -454,7 +452,7 @@ onde.Onde.prototype._sanitizeFieldInfo = function (fieldInfo, valueData) {
 onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNode, valueData) {
     //TODO: Allow schema-less render (with multiline string as the fallback)
     //TODO: Read-only
-    //TODO: Schema refparentNode
+    //TODO: Schema ref
 
     var fieldValueId = 'fieldvalue-' + this._fieldNameToID(fieldName);
     if ('$ref' in fieldInfo) {
@@ -653,7 +651,6 @@ onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNod
                     itemTypes = fieldInfo.items;
                     //TODO
                     console.warn("Array with multiple types of item is currently not supported");
-                    console.warn(itemTypes);
                 } else {
                     itemTypes = [fieldInfo.items];
                     itemSchema = fieldInfo.items;
@@ -1061,7 +1058,6 @@ onde.Onde.prototype._buildProperty = function (propName, propInfo, path, formDat
     }
     var dataType = ptype;
     if (ptype == 'any') {
-        
         var fvn = $('#fieldvalue-' + fieldBaseId);
         if (fvn.length) {
             dataType = fvn.attr('data-type');
