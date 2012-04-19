@@ -44,7 +44,7 @@ $(document).ready(function () {
           // Bind our form's submit event. We use this to get the data out from Onde
           $('#data-entry-form').submit(function (evt) {
             evt.preventDefault();
-            alert("asdf");
+
             var outData = ondeSession.getData();
             
             if (outData.errorCount) {

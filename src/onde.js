@@ -58,8 +58,8 @@ var onde = (function () {
     };
 })();
 
-onde.PRIMITIVE_TYPES = ['string', 'number', 'integer', 'boolean', 'array', 'object'];
-//onde.simpleTypes = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null', 'any'];
+//onde.PRIMITIVE_TYPES = ['string', 'number', 'integer', 'boolean', 'array', 'object'];
+onde.PRIMITIVE_TYPES = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null', 'any'];
 
 onde.Onde = function (formElement, schema, documentInst, opts) {
     var _inst = this;
@@ -81,6 +81,11 @@ onde.Onde = function (formElement, schema, documentInst, opts) {
     this.panelElement.find('.item-add').live('click', function (evt) {
         evt.preventDefault();
         _inst.onAddListItem($(this));
+    });
+    // Multitype item setter
+    this.panelElement.find('.item-set').live('click', function (evt) {
+        evt.preventDefault();
+        _inst.onSetMultitype($(this));
     });
     // Collapsible field (object and array)
     this.panelElement.find('.collapser').live('click', function (evt) {
@@ -149,6 +154,7 @@ onde.Onde.prototype.getSchema = function (schemaURL) {
 };
 
 onde.Onde.prototype.renderObject = function (schema, parentNode, namespace, data) {
+
     schema = schema || { type: "object", additionalProperties: true, _deletable: true };
     var props = schema.properties || {};
     var sortedKeys = [];
@@ -187,6 +193,7 @@ onde.Onde.prototype.renderObject = function (schema, parentNode, namespace, data
     // Render all the properties defined in the schema
     var rowN = null;
     for (var ik = 0; ik < sortedKeys.length; ik++) {
+
         var propName = sortedKeys[ik];
         var valueData = data ? data[propName] : null;
         var rowN = this.renderObjectPropertyField(namespace, fieldId, 
@@ -342,6 +349,8 @@ onde.Onde.prototype.renderEnumField = function (fieldName, fieldInfo, valueData)
     return fieldValueNode;
 };
 onde.Onde.prototype.renderEditBarContent = function (typeList, fieldValueId, baseNode, controlNode) {
+    //TODO:Nathan: Remove this
+    console.error(baseNode);
     if (typeList.length == 1) {
         var optInfo = typeList[0];
         if (typeof optInfo == 'string') {
@@ -445,7 +454,8 @@ onde.Onde.prototype._sanitizeFieldInfo = function (fieldInfo, valueData) {
 onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNode, valueData) {
     //TODO: Allow schema-less render (with multiline string as the fallback)
     //TODO: Read-only
-    //TODO: Schema ref
+    //TODO: Schema refparentNode
+
     var fieldValueId = 'fieldvalue-' + this._fieldNameToID(fieldName);
     if ('$ref' in fieldInfo) {
         console.log(fieldInfo);
@@ -453,17 +463,63 @@ onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNod
             console.log(valueData);
         }
     }
+
     fieldInfo = this._sanitizeFieldInfo(fieldInfo, valueData);
+    
     var fieldDesc = fieldInfo ? fieldInfo.description || fieldInfo.title : null;
-    if (!fieldInfo || !fieldInfo.type || fieldInfo.type == 'any') {
-        //TODO: Any!
+    if (!fieldInfo || !fieldInfo.type ) {
         if (!fieldInfo) {
             parentNode.text("InternalError: Missing field information");
         } else if (!fieldInfo.type) {
             parentNode.text("InternalError: Missing type property");
-        } else {
-            parentNode.text("InternalError: Type of 'any' is currently not supported");
         }
+    } else if (fieldInfo.type == 'any') {
+        
+        function typeOf(value) {
+            var s = typeof value;
+            if (s === 'object') {
+                if (value) {
+                    if (value instanceof Array) {
+                        s = 'array';
+                    }
+                } else {
+                    s = 'null';
+                }
+            }
+            return s;
+        }
+        
+        var fieldValueContainer = $('<div>').
+            attr('id', fieldValueId).addClass('fieldvalue-container');
+        
+        if(valueData === null){
+            valueData = "";
+        }
+        
+        fieldInfo.type = typeOf(valueData);
+        fieldValueContainer.append(this.renderMultitypeField(fieldName, fieldInfo, valueData));
+        
+        var editBar = $('<div></div>').
+            attr('id', fieldValueId + '-edit-bar').
+            addClass('edit-bar');
+            
+        var inner = $('<small></small>');
+        inner.append(this.tr("Set type: "));
+        var addBtn = $('<button></button>').
+            addClass('field-add').
+            addClass('item-set').
+            attr('data-field-id', fieldValueId).
+            attr('data-object-namespace', fieldName).
+            text(this.tr("Set"));
+        
+        var valueTypes = ['string', 'number', 'object', 'array', 'boolean'];
+        this.renderEditBarContent(valueTypes, fieldValueId, inner, addBtn);
+        inner.append(' ').append(addBtn);
+        editBar.append(inner);
+        fieldValueContainer.append(editBar);
+        
+        parentNode.append(fieldValueContainer);
+
     } else if (fieldInfo.type == 'string') {
         if (fieldInfo.readonly) {
             valueData = fieldInfo.value;
@@ -597,6 +653,7 @@ onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNod
                     itemTypes = fieldInfo.items;
                     //TODO
                     console.warn("Array with multiple types of item is currently not supported");
+                    console.warn(itemTypes);
                 } else {
                     itemTypes = [fieldInfo.items];
                     itemSchema = fieldInfo.items;
@@ -778,7 +835,7 @@ onde.Onde.prototype.renderObjectPropertyField = function (namespace, baseId, fie
 
 onde.Onde.prototype.renderListItemField = function (namespace, fieldInfo, index, valueData) {
     var itemId = index;
-    var fieldName = namespace + '[' + itemId + ']';
+    var fieldName = itemId < 0 ? namespace : namespace + '[' + itemId + ']';
     var fieldBaseId = this._fieldNameToID(fieldName);
     var fieldId = 'field-' + fieldBaseId;
     var fieldValueId = 'fieldvalue-' + fieldBaseId;
@@ -844,6 +901,21 @@ onde.Onde.prototype.renderListItemField = function (namespace, fieldInfo, index,
     return rowN;
 };
 
+onde.Onde.prototype.renderMultitypeField = function (fieldName, fieldInfo, valueData) {
+
+    var fieldBaseId = this._fieldNameToID(fieldName);
+    //var fieldId = 'field-' + fieldBaseId;
+    var fieldValueId = 'fieldvalue-' + fieldBaseId;
+    
+    var valueContainer = $('<ul>').
+            attr('id', fieldValueId).
+            //attr('data-type', type).
+            addClass('multitype-value');
+
+    valueContainer.append( this.renderListItemField(fieldName + '_multitype', fieldInfo, -1, valueData));
+    
+    return valueContainer;
+};
 
 onde.Onde.prototype._getFieldInfo = function (handle) {
     var baseId = handle.attr('data-field-id');
@@ -944,6 +1016,23 @@ onde.Onde.prototype.onAddListItem = function (handle) {
     rowN.hide();
     rowN.fadeIn('fast', function () { rowN.find('input').first().focus(); });
 };
+onde.Onde.prototype.onSetMultitype = function (handle) {
+    var baseId = handle.attr('data-field-id');
+    var namespace = handle.attr('data-object-namespace');
+    var ftype = handle.attr('data-object-type') || $('#' + baseId + '-type').val();
+    var fieldInfo = this._getFieldInfo(handle);
+    if (!fieldInfo) {
+        // No schema found, build it
+        fieldInfo = { type: ftype };
+        if (ftype == 'object') {
+            // Special case for object, add additional property
+            fieldInfo.additionalProperties = true;
+        }
+    }
+    var baseNode = $('#' + baseId);
+    //TODO: Should replace with the previous value instead of null
+    baseNode.children('.multitype-value').replaceWith( this.renderMultitypeField(namespace, ftype, null) );
+};
 
 onde.Onde.prototype.onFieldTypeChanged = function (handle) {
     //TODO
@@ -972,6 +1061,7 @@ onde.Onde.prototype._buildProperty = function (propName, propInfo, path, formDat
     }
     var dataType = ptype;
     if (ptype == 'any') {
+        
         var fvn = $('#fieldvalue-' + fieldBaseId);
         if (fvn.length) {
             dataType = fvn.attr('data-type');
@@ -1079,7 +1169,7 @@ onde.Onde.prototype._buildProperty = function (propName, propInfo, path, formDat
 };
 
 onde.Onde.prototype._buildObject = function (schema, path, formData) {
-    var result = { data: {}, errorCount: 0, errorData: {}, noData: true };
+  var result = { data: {}, errorCount: 0, errorData: {}, noData: true };
     var props = schema ? schema.properties || {} : {};
     for (var propName in props) {
         if (!props.hasOwnProperty(propName)) {
@@ -1107,9 +1197,14 @@ onde.Onde.prototype._buildObject = function (schema, path, formData) {
             // Filter the form data
             if (fieldName.startsWith(cpath)) {
                 var propName = fieldName.slice(cpath.length);
+                var mtIdx = propName.indexOf('_multitype');
+                if(mtIdx > 0){
+                    propName = propName.substring(0, mtIdx);
+                }
                 var dataType = null;
                 var dotIdx = propName.indexOf(this.fieldNamespaceSeparator);
                 var brkIdx = propName.indexOf('[');
+                
                 if (dotIdx > 0 && brkIdx > 0) {
                     dataType = (dotIdx < brkIdx) ? 'object' : 'array';
                 } else if (dotIdx > 0) {
@@ -1196,7 +1291,9 @@ onde.Onde.prototype._buildObject = function (schema, path, formData) {
 onde.Onde.prototype.getData = function (opts) {
     var formData = {};
     var fields = this.formElement.serializeArray();
+    console.warn(fields);
     for (var i = 0; i < fields.length; i++) {
+        console.warn(fields[i]);
         formData[fields[i].name] = fields[i].value;
     }
     if (formData.next) {
