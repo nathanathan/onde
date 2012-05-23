@@ -215,6 +215,9 @@ onde.Onde.prototype.renderObject = function (schema, parentNode, namespace, data
         // string (the name of the type), object (type info), array of types.
         var firstItem = rowN ? false : true;
         if (schema.additionalProperties === true) {
+            if(data === null){
+                data = schema['default'];
+            }
             for (var dKey in data) {
                 //NOTE: No need to check the types. Will be done by the inner renderers.
                 // Take only additional items
