@@ -491,11 +491,11 @@ onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNod
             attr('id', fieldValueId).addClass('fieldvalue-container');
         
         if(valueData === null){
-            valueData = "";
+            valueData = fieldInfo['default'];
         }
-        
-        fieldInfo.type = typeOf(valueData);
-        fieldValueContainer.append(this.renderMultitypeField(fieldName, fieldInfo, valueData));
+        var fieldInfoCopy = jQuery.extend(true, {}, fieldInfo);
+        fieldInfoCopy.type = typeOf(valueData);
+        fieldValueContainer.append(this.renderMultitypeField(fieldName, fieldInfoCopy, valueData));
         
         var editBar = $('<div></div>').
             attr('id', fieldValueId + '-edit-bar').
