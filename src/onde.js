@@ -803,7 +803,9 @@ onde.Onde.prototype.renderObjectPropertyField = function (namespace, baseId, fie
     if (collectionType) {
         labelN.append(actionMenu);
     }
-    if (labelN.hasClass('collapser') || labelN.hasClass('any')) {
+    //TODO: to support type arrays this will need to change.
+    var isMultitype = fieldType === 'any';
+    if (labelN.hasClass('collapser') || isMultitype) {
         // Add description to label if the field is collapsible
         var fieldDesc = fieldInfo.description || fieldInfo.title;
         if (fieldDesc) {
