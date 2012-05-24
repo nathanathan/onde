@@ -492,15 +492,11 @@ onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNod
         
         var fieldValueContainer = $('<div>').
             attr('id', fieldValueId).addClass('fieldvalue-container');
-        
-        //The default default for an anytype is a empty string.
-        fieldInfo['default'] = fieldInfo['default'] ? fieldInfo['default'] : "";
-        if(valueData === null){
-            valueData = fieldInfo['default'];
-        }
+
         var fieldInfoCopy = jQuery.extend(true, {}, fieldInfo);
-        fieldInfoCopy.type = typeOf(valueData);
-        fieldValueContainer.append(this.renderMultitypeField(fieldName, fieldInfoCopy, valueData));
+        var renderData = valueData ? valueData : fieldInfo['default'];
+        fieldInfoCopy.type = typeOf(renderData);
+        fieldValueContainer.append(this.renderMultitypeField(fieldName, fieldInfoCopy, renderData));
         
         var editBar = $('<div></div>').
             attr('id', fieldValueId + '-edit-bar').
@@ -986,9 +982,9 @@ onde.Onde.prototype.renderMultitypeField = function (fieldName, fieldInfo, value
             attr('id', fieldValueId).
             //attr('data-type', type).
             addClass('multitype-value');
-
-    valueContainer.append( this.renderMultitypeValue(fieldName + '_multitype', fieldInfo, valueData));
-    
+    if (fieldInfo.type !== 'null' && fieldInfo.type !== 'undefined'){
+        valueContainer.append( this.renderMultitypeValue(fieldName + '_multitype', fieldInfo, valueData));
+    }
     return valueContainer;
 };
 
@@ -1130,23 +1126,36 @@ onde.Onde.prototype._buildProperty = function (propName, propInfo, path, formDat
     var fieldName = path + this.fieldNamespaceSeparator + propName;
     var fieldBaseId = this._fieldNameToID(fieldName);
     var fieldId = 'field-' + fieldBaseId;
-    var ptype = 'any';
+    var dataType = 'any';
     if (propInfo && propInfo.type) {
-        ptype = propInfo.type;
+        dataType = propInfo.type;
     }
-    var dataType = ptype;
-    if (ptype == 'any') {
-        var fvn = $('#fieldvalue-' + fieldBaseId);
-        if (fvn.length) {
-            dataType = fvn.attr('data-type');
+    if (dataType == 'any') {
+        var fieldvalueElements = $('#fieldvalue-' + fieldBaseId).find('[data-type]');
+        if (!fieldvalueElements.length) {
+            console.log("multitype has no value");
+            if (propInfo && propInfo.required) {
+                if (typeof propInfo['default'] != 'undefined') {
+                    //TODO: Check the value (the flag below is fake)
+                    result.noData = false;
+                    result.data = propInfo['default'];
+                } else {
+                    result.errorCount += 1;
+                    result.errorData = 'value-required';
+                }
+            }
         }
-        if (!dataType || dataType == 'any') {
-            console.log(propName);
-            //TODO: Fallback: string?
-            //TODO: Need to attach the type to the field for array and object
+        else{
+            var dataType = fieldvalueElements.first().attr('data-type');
+            //console.log($('#fieldvalue-' + fieldBaseId  + '_multitype'));
+            //console.log(dataType);
+            //console.log(formData);
+            var clonedPropInfo = jQuery.extend({}, propInfo);
+            clonedPropInfo.type = dataType;
+            result = this._buildProperty(propName + '_multitype', 
+                                         clonedPropInfo, path, formData);
         }
-    }
-    if (dataType == 'object') {
+    } else if (dataType == 'object') {
         result = this._buildObject(propInfo, fieldName, formData);
     } else if (dataType == 'array') {
         var itemIndices = [];
@@ -1271,13 +1280,10 @@ onde.Onde.prototype._buildObject = function (schema, path, formData) {
             // Filter the form data
             if (fieldName.startsWith(cpath)) {
                 var propName = fieldName.slice(cpath.length);
-                var mtIdx = propName.indexOf('_multitype');
-                if(mtIdx > 0){
-                    propName = propName.substring(0, mtIdx);
-                }
                 var dataType = null;
                 var dotIdx = propName.indexOf(this.fieldNamespaceSeparator);
                 var brkIdx = propName.indexOf('[');
+                var mtIdx = propName.indexOf('_multitype');
                 
                 if (dotIdx > 0 && brkIdx > 0) {
                     dataType = (dotIdx < brkIdx) ? 'object' : 'array';
@@ -1310,6 +1316,16 @@ onde.Onde.prototype._buildObject = function (schema, path, formData) {
                             result.errorCount += cRes.errorCount;
                             result.errorData[bPropName] = cRes.errorData;
                         }
+                    }
+                } else if (mtIdx > 0) {
+                    var bPropName = propName.substring(0, mtIdx);
+                    var cRes = this._buildProperty(bPropName, { type: 'any' }, path, formData);
+                    if (!cRes.noData) {
+                        result.data[bPropName] = cRes.data;
+                    }
+                    if (cRes.errorCount) {
+                        result.errorCount += cRes.errorCount;
+                        result.errorData[bPropName] = cRes.errorData;
                     }
                 } else {
                     // Get the type from the element
