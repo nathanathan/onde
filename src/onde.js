@@ -609,23 +609,38 @@ onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNod
         // Boolean property
         var valueContainer = $('<span></span>').
             addClass('value');
-        //TODO: Check box (allow value replacements/mapping)
-        var fieldValueNode = $('<input type="checkbox" />').
+        //TODO: This true/false button ids should probably be different but that would break things.
+        var trueButton = $('<input type="radio" />').
             attr('id', fieldValueId).
             attr('name', fieldName).
+            attr('data-type', fieldInfo.type).
+            attr('value', 'true').
+            addClass('value-input');
+        var falseButton = $('<input type="radio" />').
+            attr('id', fieldValueId).
+            attr('name', fieldName).
+            attr('data-type', fieldInfo.type).
+            attr('value', 'false').
             addClass('value-input');
         if (valueData === 'on' || valueData === 'true' || valueData === 'checked' || 
-          valueData === '1' || valueData === 1 || valueData === true) {
-            fieldValueNode.attr('checked', 'checked');
+          valueData === '1' || valueData === 1 || valueData === true ||
+          ('default' in fieldInfo && fieldInfo['default'])) {
+            trueButton.attr('checked', 'checked');
+        } else {
+            falseButton.attr('checked', 'checked');
         }
         if (fieldInfo.title) {
-            fieldValueNode.attr('title', fieldInfo.title);
+            trueButton.attr('title', fieldInfo.title);
+            falseButton.attr('title', fieldInfo.title);
         }
-        if ('default' in fieldInfo && fieldInfo['default']) {
-            fieldValueNode.attr('checked', 'checked');
-        }
-        fieldValueNode.attr('data-type', fieldInfo.type);
-        valueContainer.append(fieldValueNode);
+        valueContainer.append(trueButton);
+        valueContainer.append($('<label></label>').
+                              css('margin-right', '1em').
+                              append('true'));
+        valueContainer.append(falseButton);
+        valueContainer.append($('<label></label>').
+                              css('margin-right', '1em').
+                              append('false'));
         if (fieldDesc) {
             valueContainer.append(' ').append($('<small></small>').
                 addClass('description').
@@ -1388,6 +1403,7 @@ onde.Onde.prototype.getData = function (opts) {
         delete formData.next;
     }
     this.formElement.find('.onde-panel .error').removeClass('error');
+    console.log(fields);
     return this._buildObject(this.documentSchema, this.instanceId, formData);
 };
 
