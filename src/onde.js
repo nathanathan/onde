@@ -493,6 +493,8 @@ onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNod
         var fieldValueContainer = $('<div>').
             attr('id', fieldValueId).addClass('fieldvalue-container');
         
+        //The default default for an anytype is a empty string.
+        fieldInfo['default'] = fieldInfo['default'] ? fieldInfo['default'] : "";
         if(valueData === null){
             valueData = fieldInfo['default'];
         }
@@ -801,7 +803,7 @@ onde.Onde.prototype.renderObjectPropertyField = function (namespace, baseId, fie
     if (collectionType) {
         labelN.append(actionMenu);
     }
-    if (labelN.hasClass('collapser')) {
+    if (labelN.hasClass('collapser') || labelN.hasClass('any')) {
         // Add description to label if the field is collapsible
         var fieldDesc = fieldInfo.description || fieldInfo.title;
         if (fieldDesc) {
@@ -835,7 +837,7 @@ onde.Onde.prototype.renderObjectPropertyField = function (namespace, baseId, fie
 
 onde.Onde.prototype.renderListItemField = function (namespace, fieldInfo, index, valueData) {
     var itemId = index;
-    var fieldName = itemId < 0 ? namespace : namespace + '[' + itemId + ']';
+    var fieldName = namespace + '[' + itemId + ']';
     var fieldBaseId = this._fieldNameToID(fieldName);
     var fieldId = 'field-' + fieldBaseId;
     var fieldValueId = 'fieldvalue-' + fieldBaseId;
@@ -845,6 +847,77 @@ onde.Onde.prototype.renderListItemField = function (namespace, fieldInfo, index,
         addClass('field').
         addClass('array-item');
     fieldInfo = this._sanitizeFieldInfo(fieldInfo, valueData);
+    if (typeof fieldInfo.type == 'string') {
+        rowN.addClass(fieldInfo.type);
+        collectionType = (fieldInfo.type == 'object' || fieldInfo.type == 'array');
+    }
+    var deleterShown = false;
+    var labelN = null;
+    var valN = rowN;
+    if (fieldInfo.type == 'object' && fieldInfo.display == 'inline') {
+    } else {
+        var labelN = $('<label></label>').
+            attr('for', fieldValueId).
+            addClass('field-name').
+            addClass('array-index');
+        rowN.append(labelN);
+        labelN.append('&nbsp;');
+        if ((fieldInfo.type == 'object' && fieldInfo.display != 'inline') || fieldInfo.type == 'array') {
+            rowN.addClass('collapsible');
+            labelN.addClass('collapser');
+            valN = $('<div></div>').
+                attr('id', 'fieldvalue-container-' + fieldBaseId).
+                addClass('collapsible-panel').
+                addClass('fieldvalue-container');
+            rowN.append(valN);
+            if (this.initialRendering && this.options.collapsedCollapsibles) {
+                valN.hide();
+                labelN.addClass('collapsed');
+            }
+        }
+        //labelN.append(idat + ': ');
+        labelN.append('&nbsp; ');
+        //TODO: More actions (only if qualified)
+        if (collectionType) {
+            labelN.append($('<small></small>').append(' ').append($('<button></button>').
+                attr('title', this.tr("Delete item")).
+                attr('data-id', fieldId).
+                addClass('field-delete').
+                text(this.tr("delete"))
+                ).append(' '));
+            deleterShown = true;
+        }
+    }
+    if (rowN.hasClass('collapsible') && labelN) {
+        labelN.attr('data-fieldvalue-container-id', 'fieldvalue-container-' + fieldBaseId);
+    }
+    this.renderFieldValue(fieldName, fieldInfo, valN, valueData);
+    if (!deleterShown) {
+        valN.append($('<small></small>').append(' ').append($('<button></button>').
+            attr('title', this.tr("Delete item")).
+            attr('data-id', fieldId).
+            addClass('field-delete').
+            text(this.tr("delete"))
+            ).append(' '));
+    }
+    return rowN;
+};
+
+onde.Onde.prototype.renderMultitypeValue = function (namespace, fieldInfo, valueData) {
+    //This is just a slightly modified renderListItemField.
+    //It could be cleaned up to get rid of the array stuff, and the
+    //common code could be put into a new shared function.
+    var fieldName = namespace;
+    var fieldBaseId = this._fieldNameToID(fieldName);
+    var fieldId = 'field-' + fieldBaseId;
+    var fieldValueId = 'fieldvalue-' + fieldBaseId;
+    var collectionType = false;
+    var rowN = $('<li></li>').
+        attr('id', fieldId).
+        addClass('field').
+        addClass('array-item');
+    fieldInfo = this._sanitizeFieldInfo(fieldInfo, valueData);
+    delete fieldInfo['description']; //Remove the description.
     if (typeof fieldInfo.type == 'string') {
         rowN.addClass(fieldInfo.type);
         collectionType = (fieldInfo.type == 'object' || fieldInfo.type == 'array');
@@ -912,7 +985,7 @@ onde.Onde.prototype.renderMultitypeField = function (fieldName, fieldInfo, value
             //attr('data-type', type).
             addClass('multitype-value');
 
-    valueContainer.append( this.renderListItemField(fieldName + '_multitype', fieldInfo, -1, valueData));
+    valueContainer.append( this.renderMultitypeValue(fieldName + '_multitype', fieldInfo, valueData));
     
     return valueContainer;
 };
