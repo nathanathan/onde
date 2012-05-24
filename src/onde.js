@@ -215,6 +215,9 @@ onde.Onde.prototype.renderObject = function (schema, parentNode, namespace, data
         // string (the name of the type), object (type info), array of types.
         var firstItem = rowN ? false : true;
         if (schema.additionalProperties === true) {
+            if(data === null){
+                data = schema['default'];
+            }
             for (var dKey in data) {
                 //NOTE: No need to check the types. Will be done by the inner renderers.
                 // Take only additional items
@@ -489,13 +492,11 @@ onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNod
         
         var fieldValueContainer = $('<div>').
             attr('id', fieldValueId).addClass('fieldvalue-container');
-        
-        if(valueData === null){
-            valueData = "";
-        }
-        
-        fieldInfo.type = typeOf(valueData);
-        fieldValueContainer.append(this.renderMultitypeField(fieldName, fieldInfo, valueData));
+
+        var fieldInfoCopy = jQuery.extend(true, {}, fieldInfo);
+        var renderData = valueData ? valueData : fieldInfo['default'];
+        fieldInfoCopy.type = typeOf(renderData);
+        fieldValueContainer.append(this.renderMultitypeField(fieldName, fieldInfoCopy, renderData));
         
         var editBar = $('<div></div>').
             attr('id', fieldValueId + '-edit-bar').
@@ -608,23 +609,38 @@ onde.Onde.prototype.renderFieldValue = function (fieldName, fieldInfo, parentNod
         // Boolean property
         var valueContainer = $('<span></span>').
             addClass('value');
-        //TODO: Check box (allow value replacements/mapping)
-        var fieldValueNode = $('<input type="checkbox" />').
+        //TODO: This true/false button ids should probably be different but that would break things.
+        var trueButton = $('<input type="radio" />').
             attr('id', fieldValueId).
             attr('name', fieldName).
+            attr('data-type', fieldInfo.type).
+            attr('value', 'true').
+            addClass('value-input');
+        var falseButton = $('<input type="radio" />').
+            attr('id', fieldValueId).
+            attr('name', fieldName).
+            attr('data-type', fieldInfo.type).
+            attr('value', 'false').
             addClass('value-input');
         if (valueData === 'on' || valueData === 'true' || valueData === 'checked' || 
-          valueData === '1' || valueData === 1 || valueData === true) {
-            fieldValueNode.attr('checked', 'checked');
+          valueData === '1' || valueData === 1 || valueData === true ||
+          ('default' in fieldInfo && fieldInfo['default'])) {
+            trueButton.attr('checked', 'checked');
+        } else {
+            falseButton.attr('checked', 'checked');
         }
         if (fieldInfo.title) {
-            fieldValueNode.attr('title', fieldInfo.title);
+            trueButton.attr('title', fieldInfo.title);
+            falseButton.attr('title', fieldInfo.title);
         }
-        if ('default' in fieldInfo && fieldInfo['default']) {
-            fieldValueNode.attr('checked', 'checked');
-        }
-        fieldValueNode.attr('data-type', fieldInfo.type);
-        valueContainer.append(fieldValueNode);
+        valueContainer.append(trueButton);
+        valueContainer.append($('<label></label>').
+                              css('margin-right', '1em').
+                              append('true'));
+        valueContainer.append(falseButton);
+        valueContainer.append($('<label></label>').
+                              css('margin-right', '1em').
+                              append('false'));
         if (fieldDesc) {
             valueContainer.append(' ').append($('<small></small>').
                 addClass('description').
@@ -798,7 +814,9 @@ onde.Onde.prototype.renderObjectPropertyField = function (namespace, baseId, fie
     if (collectionType) {
         labelN.append(actionMenu);
     }
-    if (labelN.hasClass('collapser')) {
+    //TODO: to support type arrays this will need to change.
+    var isMultitype = fieldType === 'any';
+    if (labelN.hasClass('collapser') || isMultitype) {
         // Add description to label if the field is collapsible
         var fieldDesc = fieldInfo.description || fieldInfo.title;
         if (fieldDesc) {
@@ -832,7 +850,7 @@ onde.Onde.prototype.renderObjectPropertyField = function (namespace, baseId, fie
 
 onde.Onde.prototype.renderListItemField = function (namespace, fieldInfo, index, valueData) {
     var itemId = index;
-    var fieldName = itemId < 0 ? namespace : namespace + '[' + itemId + ']';
+    var fieldName = namespace + '[' + itemId + ']';
     var fieldBaseId = this._fieldNameToID(fieldName);
     var fieldId = 'field-' + fieldBaseId;
     var fieldValueId = 'fieldvalue-' + fieldBaseId;
@@ -842,6 +860,77 @@ onde.Onde.prototype.renderListItemField = function (namespace, fieldInfo, index,
         addClass('field').
         addClass('array-item');
     fieldInfo = this._sanitizeFieldInfo(fieldInfo, valueData);
+    if (typeof fieldInfo.type == 'string') {
+        rowN.addClass(fieldInfo.type);
+        collectionType = (fieldInfo.type == 'object' || fieldInfo.type == 'array');
+    }
+    var deleterShown = false;
+    var labelN = null;
+    var valN = rowN;
+    if (fieldInfo.type == 'object' && fieldInfo.display == 'inline') {
+    } else {
+        var labelN = $('<label></label>').
+            attr('for', fieldValueId).
+            addClass('field-name').
+            addClass('array-index');
+        rowN.append(labelN);
+        labelN.append('&nbsp;');
+        if ((fieldInfo.type == 'object' && fieldInfo.display != 'inline') || fieldInfo.type == 'array') {
+            rowN.addClass('collapsible');
+            labelN.addClass('collapser');
+            valN = $('<div></div>').
+                attr('id', 'fieldvalue-container-' + fieldBaseId).
+                addClass('collapsible-panel').
+                addClass('fieldvalue-container');
+            rowN.append(valN);
+            if (this.initialRendering && this.options.collapsedCollapsibles) {
+                valN.hide();
+                labelN.addClass('collapsed');
+            }
+        }
+        //labelN.append(idat + ': ');
+        labelN.append('&nbsp; ');
+        //TODO: More actions (only if qualified)
+        if (collectionType) {
+            labelN.append($('<small></small>').append(' ').append($('<button></button>').
+                attr('title', this.tr("Delete item")).
+                attr('data-id', fieldId).
+                addClass('field-delete').
+                text(this.tr("delete"))
+                ).append(' '));
+            deleterShown = true;
+        }
+    }
+    if (rowN.hasClass('collapsible') && labelN) {
+        labelN.attr('data-fieldvalue-container-id', 'fieldvalue-container-' + fieldBaseId);
+    }
+    this.renderFieldValue(fieldName, fieldInfo, valN, valueData);
+    if (!deleterShown) {
+        valN.append($('<small></small>').append(' ').append($('<button></button>').
+            attr('title', this.tr("Delete item")).
+            attr('data-id', fieldId).
+            addClass('field-delete').
+            text(this.tr("delete"))
+            ).append(' '));
+    }
+    return rowN;
+};
+
+onde.Onde.prototype.renderMultitypeValue = function (namespace, fieldInfo, valueData) {
+    //This is just a slightly modified renderListItemField.
+    //It could be cleaned up to get rid of the array stuff, and the
+    //common code could be put into a new shared function.
+    var fieldName = namespace;
+    var fieldBaseId = this._fieldNameToID(fieldName);
+    var fieldId = 'field-' + fieldBaseId;
+    var fieldValueId = 'fieldvalue-' + fieldBaseId;
+    var collectionType = false;
+    var rowN = $('<li></li>').
+        attr('id', fieldId).
+        addClass('field').
+        addClass('array-item');
+    fieldInfo = this._sanitizeFieldInfo(fieldInfo, valueData);
+    delete fieldInfo['description']; //Remove the description.
     if (typeof fieldInfo.type == 'string') {
         rowN.addClass(fieldInfo.type);
         collectionType = (fieldInfo.type == 'object' || fieldInfo.type == 'array');
@@ -908,9 +997,9 @@ onde.Onde.prototype.renderMultitypeField = function (fieldName, fieldInfo, value
             attr('id', fieldValueId).
             //attr('data-type', type).
             addClass('multitype-value');
-
-    valueContainer.append( this.renderListItemField(fieldName + '_multitype', fieldInfo, -1, valueData));
-    
+    if (fieldInfo.type !== 'null' && fieldInfo.type !== 'undefined'){
+        valueContainer.append( this.renderMultitypeValue(fieldName + '_multitype', fieldInfo, valueData));
+    }
     return valueContainer;
 };
 
@@ -1052,23 +1141,36 @@ onde.Onde.prototype._buildProperty = function (propName, propInfo, path, formDat
     var fieldName = path + this.fieldNamespaceSeparator + propName;
     var fieldBaseId = this._fieldNameToID(fieldName);
     var fieldId = 'field-' + fieldBaseId;
-    var ptype = 'any';
+    var dataType = 'any';
     if (propInfo && propInfo.type) {
-        ptype = propInfo.type;
+        dataType = propInfo.type;
     }
-    var dataType = ptype;
-    if (ptype == 'any') {
-        var fvn = $('#fieldvalue-' + fieldBaseId);
-        if (fvn.length) {
-            dataType = fvn.attr('data-type');
+    if (dataType == 'any') {
+        var fieldvalueElements = $('#fieldvalue-' + fieldBaseId).find('[data-type]');
+        if (!fieldvalueElements.length) {
+            console.log("multitype has no value");
+            if (propInfo && propInfo.required) {
+                if (typeof propInfo['default'] != 'undefined') {
+                    //TODO: Check the value (the flag below is fake)
+                    result.noData = false;
+                    result.data = propInfo['default'];
+                } else {
+                    result.errorCount += 1;
+                    result.errorData = 'value-required';
+                }
+            }
         }
-        if (!dataType || dataType == 'any') {
-            console.log(propName);
-            //TODO: Fallback: string?
-            //TODO: Need to attach the type to the field for array and object
+        else{
+            var dataType = fieldvalueElements.first().attr('data-type');
+            //console.log($('#fieldvalue-' + fieldBaseId  + '_multitype'));
+            //console.log(dataType);
+            //console.log(formData);
+            var clonedPropInfo = jQuery.extend({}, propInfo);
+            clonedPropInfo.type = dataType;
+            result = this._buildProperty(propName + '_multitype', 
+                                         clonedPropInfo, path, formData);
         }
-    }
-    if (dataType == 'object') {
+    } else if (dataType == 'object') {
         result = this._buildObject(propInfo, fieldName, formData);
     } else if (dataType == 'array') {
         var itemIndices = [];
@@ -1193,13 +1295,10 @@ onde.Onde.prototype._buildObject = function (schema, path, formData) {
             // Filter the form data
             if (fieldName.startsWith(cpath)) {
                 var propName = fieldName.slice(cpath.length);
-                var mtIdx = propName.indexOf('_multitype');
-                if(mtIdx > 0){
-                    propName = propName.substring(0, mtIdx);
-                }
                 var dataType = null;
                 var dotIdx = propName.indexOf(this.fieldNamespaceSeparator);
                 var brkIdx = propName.indexOf('[');
+                var mtIdx = propName.indexOf('_multitype');
                 
                 if (dotIdx > 0 && brkIdx > 0) {
                     dataType = (dotIdx < brkIdx) ? 'object' : 'array';
@@ -1232,6 +1331,16 @@ onde.Onde.prototype._buildObject = function (schema, path, formData) {
                             result.errorCount += cRes.errorCount;
                             result.errorData[bPropName] = cRes.errorData;
                         }
+                    }
+                } else if (mtIdx > 0) {
+                    var bPropName = propName.substring(0, mtIdx);
+                    var cRes = this._buildProperty(bPropName, { type: 'any' }, path, formData);
+                    if (!cRes.noData) {
+                        result.data[bPropName] = cRes.data;
+                    }
+                    if (cRes.errorCount) {
+                        result.errorCount += cRes.errorCount;
+                        result.errorData[bPropName] = cRes.errorData;
                     }
                 } else {
                     // Get the type from the element
@@ -1294,6 +1403,7 @@ onde.Onde.prototype.getData = function (opts) {
         delete formData.next;
     }
     this.formElement.find('.onde-panel .error').removeClass('error');
+    console.log(fields);
     return this._buildObject(this.documentSchema, this.instanceId, formData);
 };
 
